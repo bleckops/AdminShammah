@@ -44,12 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const data = adminDocSnap.exists() ? adminDocSnap.data() : null;
           const isDbAdmin = data && (data.isAdmin === true || data.role === "admin");
 
-          // Bootstrap whitelist fallback to avoid lock-outs
-          const whitelistStr = process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
-          const whitelist = whitelistStr.split(",").map(e => e.trim().toLowerCase());
-          const isWhitelisted = currentUser.email && whitelist.includes(currentUser.email.toLowerCase());
-
-          if (isDbAdmin || isWhitelisted) {
+          if (isDbAdmin) {
             setUser(currentUser);
           } else {
             // Reject non-admin user
