@@ -3,9 +3,9 @@ export type MediaFileType = "image" | "audio";
 export const MEDIA_LIMITS = {
   image: {
     maxBytes: 10 * 1024 * 1024,
-    mimeTypes: ["image/png"],
-    extensions: [".png"],
-    allowedFormats: "png",
+    mimeTypes: ["image/png", "image/x-png", "image/apng", "image/jpeg", "image/jpg", "image/pjpeg"],
+    extensions: [".png", ".jpg", ".jpeg"],
+    allowedFormats: "png,jpg,jpeg",
     resourceType: "image" as const,
     folder: "shammah-admin/images",
   },

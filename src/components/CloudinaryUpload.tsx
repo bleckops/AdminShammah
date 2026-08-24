@@ -264,7 +264,7 @@ export default function CloudinaryUpload({
 
   const accept =
     fileType === "image"
-      ? "image/png"
+      ? "image/png,image/x-png,image/apng,image/jpeg,image/jpg,image/pjpeg,.png,.jpg,.jpeg"
       : "audio/mpeg,audio/wav,audio/mp3,audio/x-wav";
 
   return (
