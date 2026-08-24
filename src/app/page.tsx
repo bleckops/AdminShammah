@@ -39,7 +39,8 @@ import {
   Tent,
   Flame,
   Sparkles,
-  Megaphone
+  Megaphone,
+  BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import { 
@@ -56,7 +57,7 @@ interface Event {
   id: string;
   title: string;
   description: string;
-  type: "birthdays" | "retreat" | "camp" | "prayer" | "social" | "evangelism";
+  type: "birthdays" | "retreat" | "camp" | "prayer" | "social" | "evangelism" | "discipleship";
   date: Timestamp;
   time?: string | null;
   location?: string | null;
@@ -73,6 +74,7 @@ const EVENT_TYPES = [
   { value: "prayer", label: "Prayer", color: "text-violet-400 bg-violet-500/10 border-violet-500/20", icon: Flame },
   { value: "social", label: "Social", color: "text-sky-400 bg-sky-500/10 border-sky-500/20", icon: Sparkles },
   { value: "evangelism", label: "Evangelism", color: "text-rose-400 bg-rose-500/10 border-rose-500/20", icon: Megaphone },
+  { value: "discipleship", label: "Discipleship", color: "text-teal-400 bg-teal-500/10 border-teal-500/20", icon: BookOpen },
 ];
 
 // Mock analytics data for premium chart aesthetic
@@ -705,6 +707,7 @@ export default function Dashboard() {
                         else if (tVal === "prayer") dotBg = "bg-violet-400";
                         else if (tVal === "social") dotBg = "bg-sky-400";
                         else if (tVal === "evangelism") dotBg = "bg-rose-400";
+                        else if (tVal === "discipleship") dotBg = "bg-teal-400";
 
                         const label = EVENT_TYPES.find(et => et.value === tVal)?.label || tVal;
 
