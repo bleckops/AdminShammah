@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Image as ImageIcon, 
-  FileVideo, 
+import {
+  LayoutDashboard,
+  Image as ImageIcon,
+  FileVideo,
   LogOut,
   Crosshair,
-  Calendar
+  Calendar,
+  Library,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -21,6 +22,7 @@ export default function Sidebar() {
     { name: "Banners", href: "/banners", icon: ImageIcon },
     { name: "Sermons", href: "/sermons", icon: FileVideo },
     { name: "Events", href: "/events", icon: Calendar },
+    { name: "Resources", href: "/resources", icon: Library },
   ];
 
   return (
