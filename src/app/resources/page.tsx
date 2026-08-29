@@ -23,6 +23,7 @@ import {
   BookOpen,
   Compass,
   Eye,
+  Group,
   Library,
   ExternalLink,
   Sparkles,
@@ -33,7 +34,7 @@ interface Resource {
   id: string;
   title: string;
   description?: string | null;
-  type: "reflection" | "study" | "mission" | "vision";
+  type: "reflection" | "study" | "mission" | "vision" | "aboutus";
   url?: string | null;
   isActive: boolean;
   createdAt?: Timestamp;
@@ -64,6 +65,12 @@ const RESOURCE_TYPES = [
     label: "Vision",
     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     icon: Eye,
+  },
+  {
+    value: "aboutus",
+    label: "About Us",
+    color: "text-teal-400 bg-teal-500/10 border-teal-500/20",
+    icon: Group,
   },
 ] as const;
 

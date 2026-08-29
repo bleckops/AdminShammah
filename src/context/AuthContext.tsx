@@ -31,7 +31,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
+    let cancelled = false;
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (cancelled) return;
+
+      setLoading(true);
+
       if (currentUser) {
         try {
           // Check Firestore admins collection for role authority
@@ -44,11 +50,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const data = adminDocSnap.exists() ? adminDocSnap.data() : null;
           const isDbAdmin = data && (data.isAdmin === true || data.role === "admin");
 
-          if (isDbAdmin) {
+          if (isDbAdmin && !cancelled) {
             setUser(currentUser);
           } else {
             // Reject non-admin user
             await firebaseSignOut(auth);
+            if (cancelled) return;
             setUser(null);
             
             // Dispatch dynamic error to show in Login Screen
@@ -57,7 +64,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } catch (error) {
           console.error("Admin verification error:", error);
+          if (cancelled) return;
           await firebaseSignOut(auth);
+          if (cancelled) return;
           setUser(null);
           
           // Dispatch rules error
@@ -68,18 +77,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
       }
       setLoading(false);
-
-      // Route Protection
-      const isLoginPage = pathname === "/login";
-      if (!currentUser && !isLoginPage) {
-        router.push("/login");
-      } else if (currentUser && isLoginPage) {
-        router.push("/");
-      }
     });
 
-    return () => unsubscribe();
-  }, [pathname, router]);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  // Protect routes without re-subscribing to Firebase whenever navigation changes.
+  useEffect(() => {
+    if (loading) return;
+
+    const isLoginPage = pathname === "/login";
+    if (!user && !isLoginPage) {
+      router.replace("/login");
+    } else if (user && isLoginPage) {
+      router.replace("/");
+    }
+  }, [loading, pathname, router, user]);
 
   const logout = async () => {
     try {

@@ -16,6 +16,17 @@ import {
   Timestamp 
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import type {
+  Event,
+  EventPeriod,
+  EventRepeat,
+} from "@/lib/events";
+import {
+  EVENT_PERIODS,
+  eventMatchesDay,
+  normalizeRecurrence,
+  recurrenceLabel,
+} from "@/lib/events";
 import { 
   FileVideo, 
   Image as ImageIcon, 
@@ -52,20 +63,6 @@ import {
   ResponsiveContainer 
 } from "recharts";
 import CloudinaryUpload from "@/components/CloudinaryUpload";
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  type: "birthdays" | "retreat" | "camp" | "prayer" | "social" | "evangelism" | "discipleship";
-  date: Timestamp;
-  time?: string | null;
-  location?: string | null;
-  imageUrl?: string | null;
-  isActive: boolean;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
-}
 
 const EVENT_TYPES = [
   { value: "birthdays", label: "Birthday", color: "text-pink-400 bg-pink-500/10 border-pink-500/20", icon: Gift },
@@ -115,6 +112,9 @@ export default function Dashboard() {
   const [description, setDescription] = useState("");
   const [type, setType] = useState<Event["type"]>("birthdays");
   const [dateStr, setDateStr] = useState("");
+  const [repeat, setRepeat] = useState<EventRepeat>("recursive");
+  const [repeatNumber, setRepeatNumber] = useState<number | null>(null);
+  const [period, setPeriod] = useState<EventPeriod>("yearly");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -212,21 +212,6 @@ export default function Dashboard() {
     );
   };
 
-  const eventMatchesDay = (event: Event, dayDate: Date) => {
-    if (!event.date) return false;
-    const eventDate = event.date.toDate();
-    
-    if (event.type === "birthdays") {
-      return (
-        eventDate.getMonth() === dayDate.getMonth() &&
-        eventDate.getDate() === dayDate.getDate() &&
-        eventDate.getFullYear() <= dayDate.getFullYear()
-      );
-    }
-    
-    return isSameDay(eventDate, dayDate);
-  };
-
   const isToday = (date: Date) => {
     return isSameDay(date, new Date());
   };
@@ -292,6 +277,9 @@ export default function Dashboard() {
     setTitle("");
     setDescription("");
     setType("birthdays");
+    setRepeat("recursive");
+    setRepeatNumber(null);
+    setPeriod("yearly");
     
     // Default to the provided date or today in local format YYYY-MM-DD
     const targetDate = initialDate || new Date();
@@ -313,6 +301,10 @@ export default function Dashboard() {
     setTitle(event.title);
     setDescription(event.description || "");
     setType(event.type);
+    const recurrence = normalizeRecurrence(event);
+    setRepeat(recurrence.repeat);
+    setRepeatNumber(recurrence.repeatNumber);
+    setPeriod(recurrence.period || "yearly");
     
     let formattedDate = "";
     if (event.date) {
@@ -337,6 +329,18 @@ export default function Dashboard() {
       setFormError("Title, Event Type, and Date are required.");
       return;
     }
+    if (repeat === "recursive" && repeatNumber !== null && (!Number.isInteger(repeatNumber) || repeatNumber < 1)) {
+      setFormError("Occurrence count must be a positive whole number.");
+      return;
+    }
+    if (repeat === "recursive" && repeatNumber === null && (type !== "birthdays" || period !== "yearly")) {
+      setFormError("Only yearly birthdays can have unlimited occurrences.");
+      return;
+    }
+    if (repeat === "recursive" && !period) {
+      setFormError("A recurrence period is required.");
+      return;
+    }
 
     setSubmitting(true);
     setFormError(null);
@@ -349,6 +353,9 @@ export default function Dashboard() {
       description,
       type,
       date: firestoreTimestamp,
+      repeat,
+      repeatNumber: repeat === "single" ? null : repeatNumber,
+      period: repeat === "single" ? null : period,
       time: time || null,
       location: location || null,
       imageUrl: imageUrl || null,
@@ -802,6 +809,12 @@ export default function Dashboard() {
                             <span className="truncate">{selectedEvent.location}</span>
                           </div>
                         )}
+                        {recurrenceLabel(selectedEvent) && (
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-violet-400" />
+                            <span>{recurrenceLabel(selectedEvent)}</span>
+                          </div>
+                        )}
                       </div>
 
                       {selectedEvent.description && (
@@ -1047,7 +1060,17 @@ export default function Dashboard() {
                   </label>
                   <select
                     value={type}
-                    onChange={(e) => setType(e.target.value as Event["type"])}
+                    onChange={(e) => {
+                      const nextType = e.target.value as Event["type"];
+                      setType(nextType);
+                      if (nextType === "birthdays") {
+                        setRepeat("recursive");
+                        setRepeatNumber(null);
+                        setPeriod("yearly");
+                      } else if (repeat === "recursive" && repeatNumber === null) {
+                        setRepeatNumber(1);
+                      }
+                    }}
                     className="w-full rounded-xl border border-slate-850 bg-slate-950/60 px-4 py-2.5 text-xs text-slate-100 focus:border-indigo-500 focus:ring-0 outline-none transition-all cursor-pointer"
                     required
                   >
@@ -1102,6 +1125,50 @@ export default function Dashboard() {
                     className="w-full rounded-xl border border-slate-850 bg-slate-950/60 px-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:border-indigo-500 focus:ring-0 outline-none transition-all"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-355">Repeat</label>
+                  <select
+                    value={repeat}
+                    onChange={(e) => {
+                      const nextRepeat = e.target.value as EventRepeat;
+                      setRepeat(nextRepeat);
+                      if (nextRepeat === "single") setRepeatNumber(null);
+                    }}
+                    className="w-full rounded-xl border border-slate-850 bg-slate-950/60 px-4 py-2.5 text-xs text-slate-100 focus:border-indigo-500 focus:ring-0 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="single" className="bg-slate-950">Single</option>
+                    <option value="recursive" className="bg-slate-950">Recurring</option>
+                  </select>
+                </div>
+                {repeat === "recursive" && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-355">Occurrences</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={repeatNumber ?? ""}
+                        onChange={(e) => setRepeatNumber(e.target.value === "" ? null : Number(e.target.value))}
+                        placeholder={type === "birthdays" ? "Unlimited" : "e.g., 4"}
+                        className="w-full rounded-xl border border-slate-850 bg-slate-950/60 px-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:border-indigo-500 focus:ring-0 outline-none transition-all"
+                      />
+                      {type === "birthdays" && <span className="text-[9px] text-slate-500">Blank means unlimited yearly birthdays.</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-355">Period</label>
+                      <select
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value as EventPeriod)}
+                        className="w-full rounded-xl border border-slate-850 bg-slate-950/60 px-4 py-2.5 text-xs text-slate-100 focus:border-indigo-500 focus:ring-0 outline-none transition-all cursor-pointer"
+                      >
+                        {EVENT_PERIODS.map((value) => <option key={value} value={value} className="bg-slate-950">{value[0].toUpperCase() + value.slice(1)}</option>)}
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Description Field */}
